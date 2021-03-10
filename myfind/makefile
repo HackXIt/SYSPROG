@@ -9,20 +9,25 @@ vpath %.h ./inc
 
 # This is required for source-files without header-files
 #$(BUILD)hashcount.o: hashcount.c
-#        $(CC) $(CFLAGS) $(INC) -c $< -o $@
+#	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 
 # Automatic variable for object files
 $(BUILD)%.o: %.c %.h
-        $(CC) $(CFLAGS) $(INC) -c $< -o $@
+	$(CC) $(CFLAGS) $(INC) -c $< -o $@
 
 # Here are my targets
 
 all: myfind
 
-myfind: myfind.c
-        $(CC) $(CFLAGS) $^ -o $(BUILD)$@
+# Production-Version
+# myfind: main.c myfind.o mygetopt.o
+# 	$(CC) $(CFLAGS) $^ -o $(BUILD)$@
+
+# Development-Version
+myfind: main.c
+ 	$(CC) $(CFLAGS) $^ -o $(BUILD)$@
 
 clean:
-        rm $(BUILD)*.o $(BUILD)myfind
+	$(BUILD)*.o $(BUILD)myfind
 
 # TODO Doxygen Target
