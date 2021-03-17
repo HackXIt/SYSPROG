@@ -25,7 +25,7 @@ all: myfind
 
 # Development-Version
 myfind: main.c
- 	$(CC) $(CFLAGS) $^ -o $(BUILD)$@
+	$(CC) $(CFLAGS) $^ -o $(BUILD)$@
 
 clean:
 	$(BUILD)*.o $(BUILD)myfind

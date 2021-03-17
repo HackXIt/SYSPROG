@@ -367,13 +367,11 @@ fi
 echo -e "${EMPH_ON}----- Test 0.3: Test command line parameters with a wrong parameter ----${EMPH_OFF}"
 test_param -user 123-und-du-bist-raus
 test_param -user 12345678901234567890
-test_param -user ''
 test_param -userx root
 test_param --user root
 test_param -namex '*'
 test_param --name '*'
 test_param -type 'x'
-test_param -type ''
 test_param -typex 'f'
 test_param --type 'f'
 test_param --print
@@ -387,7 +385,6 @@ if [ "${GROUPMEMBERS}" -ge 4 ]
 then
     test_param -group 123-und-du-bist-raus
     test_param -group 12345678901234567890
-    test_param -group ''
     test_param -groupx root
     test_param --group root
 fi

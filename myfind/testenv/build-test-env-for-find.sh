@@ -18,10 +18,10 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 # customizing
-readonly TOPDIR="./test-find" # where to install that
-readonly NUM_USERNAME="1000"
-readonly NUM_UID="1000"
-readonly NUM_OTHERUSERNAME="rini-debian"
+readonly TOPDIR="/usr/local/etc/test-find" # where to install that
+readonly NUM_USERNAME="160"
+readonly NUM_UID="150"
+readonly NUM_OTHERUSERNAME="karl"
 readonly NOT_USED_UID="999999"
 readonly NOT_USED_GID="999999"
 readonly LONG_USERNAME="d836154a1ba14015bff78dad09f7dd82b41cd39c2a1347598215ad0622e87d03d2cc91334a4e4d8e9a5b4f35a8650d2cf5a6711d86de4b1bb227eb8ccb58bcf9197878c566d84050ae7f1aca5c6b97ab"
