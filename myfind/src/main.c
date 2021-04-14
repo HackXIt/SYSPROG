@@ -3,6 +3,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <stdbool.h> // For readability
+#include <stdlib.h>
 
 /* Directory Entries => https://www.gnu.org/software/libc/manual/html_node/Directory-Entries.html
 unknown_type
@@ -38,7 +39,7 @@ typedef struct params
 	char *user;		  // username or id to search with
 	char *file;		  // filename pattern to search with
 	char *type_flags; // Array of searched types, valid types are "bcdpfls"
-	enum output;	  // formats the output accordingly
+	int output;		  // formats the output accordingly
 } params_t;
 
 void print_help();
@@ -48,7 +49,7 @@ int do_dir(const char *dir_name, const params_t *const params);		// 0 = success,
 
 int main(int argc, char const *argv[])
 {
-	params_t params;
+	params_t *params = NULL;
 	if (argc == 1)
 	{
 		print_help();
@@ -56,8 +57,8 @@ int main(int argc, char const *argv[])
 	}
 	else if (argc > 1)
 	{
-		params = check_params(argc, argv);
-		if (params.output == help)
+		params = check_params(argc, argv); // TODO NULL-Check
+		if (params->output == help)
 		{
 			print_help();
 			exit(EXIT_SUCCESS);
@@ -68,20 +69,26 @@ int main(int argc, char const *argv[])
 		fprintf(stderr, "Invalid Execution: %s\n", strerror(errno));
 		exit(EXIT_FAILURE);
 	}
-	if (do_entry(params.start, params))
+	if (do_entry(params->start, params))
 	{
-		fprintf(stderr, "%s - Error with entry: %s\n", argv[0], params.start);
-		exit(EXIT_FAILURE)
+		fprintf(stderr, "%s - Error with entry: %s\n", argv[0], params->start);
+		exit(EXIT_FAILURE);
 	}
 	else
 	{
-		exit(EXIT_SUCCESS)
+		exit(EXIT_SUCCESS);
 	}
+}
+
+void print_help()
+{ // TODO Help text output
+	printf("Help-text-output not implemented yet\n");
 }
 
 params_t *check_params(int counter, char const **unsafe_params)
 {
-	params_t *n_params = calloc(sizeof(params_t), 1); // TODO Null-Check
+	params_t *n_params = calloc(1, sizeof(params_t)); // TODO Null-Check
+	n_params->output = none;
 	char *valid_params[] = {"-user", "-name", "-type", "-print", "-ls"};
 	char *valid_types = "bcdpfls";
 	// Super inefficient at the moment
@@ -89,13 +96,14 @@ params_t *check_params(int counter, char const **unsafe_params)
 	{
 		if (strcmp(unsafe_params[i], valid_params[0]) == 0) // User given
 		{
-			n_params.user = calloc(sizeof(char), strlen(unsafe_params[i + 1])); // TODO NULL-Check
-			strcpy(n_params.user, unsafe_params[i + 1]);
+			n_params->user = calloc(strlen(unsafe_params[i + 1]) + 1, sizeof(char)); // TODO NULL-Check
+			strcpy(n_params->user, unsafe_params[i + 1]);
 		}
 		if (strcmp(unsafe_params[i], valid_params[1]) == 0) // Name given
 		{
-			n_params.file = calloc(sizeof(char), strlen(unsafe_params[i + 1])); // TODO NULL-Check
-			strcpy(n_params.file, unsafe_params[i + 1]);
+			// FIXME SEGMENTATION FAULT because no argument is provided
+			n_params->file = calloc(strlen(unsafe_params[i + 1]) + 1, sizeof(char)); // TODO NULL-Check
+			strcpy(n_params->file, unsafe_params[i + 1]);
 		}
 		if (strcmp(unsafe_params[i], valid_params[2]) == 0) // Type given
 		{
@@ -109,13 +117,15 @@ params_t *check_params(int counter, char const **unsafe_params)
 			char *token;
 			char valid_characters[8] = "";
 			char delimiter[2] = ",";
-			token = strtok(unsafe_params[i + 1], delimiter);
-			while (token != NULL)
+			char *chars;
+			strcpy(chars, unsafe_params[i + 1]);
+			token = strtok(chars, delimiter);
+			while (token != NULL) // FIXME Infinite loop
 			{
 				if (strlen(token) == 1)
 				{
 					// Compare token - Duplicated tokens will be ignored
-					switch (token)
+					switch (*token)
 					{
 					case 'b':
 						if (!bset)
@@ -173,20 +183,22 @@ params_t *check_params(int counter, char const **unsafe_params)
 					fprintf(stderr, "Invalid type set: %s", token);
 					exit(EXIT_FAILURE);
 				}
+				strtok(NULL, delimiter);
 			}
-			n_params.type_flags = calloc(sizeof(char), strlen(valid_characters)); // TODO Null-Check
-			strcpy(n_params.type_flags, valid_characters);
+			n_params->type_flags = calloc(strlen(valid_characters) + 1, sizeof(char)); // TODO Null-Check
+			strcpy(n_params->type_flags, valid_characters);
 		}
 		// FIXME If both output flags are given, the latter will be used, as the first one gets overwritten
 		if (strcmp(unsafe_params[i], valid_params[3]) == 0) // Print flag given
 		{
-			n_params.output = print;
+			n_params->output = print;
 		}
 		if (strcmp(unsafe_params[i], valid_params[4]) == 0) // LS flag given
 		{
-			n_params.output = ls;
+			n_params->output = ls;
 		}
 	}
+	return n_params;
 }
 
 int do_entry(const char *entry_name, const params_t *const params)
