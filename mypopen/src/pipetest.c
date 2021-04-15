@@ -1,12 +1,15 @@
+#define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "../inc/mypopen.h"
 
+#define BUFFER 130
+
 int main()
 {
 	FILE *fp;
-	char line[130];
+	char line[BUFFER];
 
 	char *command = "ls -l";
 	char *mode = "r";
@@ -17,7 +20,7 @@ int main()
 	{
 		printf("line: %s", line);
 	}
-	pclose(fp);
+	printf("Exit: %d\n", pclose(fp));
 
 	fp = mypopen(command, mode);
 	printf("My version:\n");
@@ -25,6 +28,7 @@ int main()
 	{
 		printf("line: %s", line);
 	}
-	mypclose(fp);
+	printf("Exit: %d\n", mypclose(fp));
+
 	exit(0);
 }

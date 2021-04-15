@@ -4,7 +4,7 @@
  * Created:
  *   4/15/2021, 9:13:25 PM
  * Last edited:
- *   4/15/2021, 9:17:39 PM
+ *   4/15/2021, 9:36:48 PM
  * Auto updated?
  *   Yes
  *
@@ -13,6 +13,7 @@
 **/
 
 /*--- COMMON LIBRARIES ---*/
+#include <stdio.h>
 
 /*--- CUSTOM LIBRARIES ---*/
 #include "../inc/mypopen.h"
@@ -21,7 +22,10 @@
 
 FILE *mypopen(const char *command, const char *type)
 {
+	printf("command: %s - mode: %s\n", command, type);
+	return NULL;
 }
 int mypclose(FILE *stream)
 {
+	return 0;
 }
