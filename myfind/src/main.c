@@ -1,19 +1,41 @@
-#include <stdio.h>
-#include <string.h>
-#include <dirent.h>
-#include <errno.h>
-#include <stdbool.h> // For readability
-#include <stdlib.h>
+/* MAIN.c
+ *   by Nikolaus Rieder
+ *
+ * Created:
+ *   4/15/2021, 7:40:04 PM
+ * Last edited:
+ *   4/15/2021, 8:25:01 PM
+ * Auto updated?
+ *   Yes
+ *
+ * Description:
+ *   Program to find directory entries, simplified re-implementation of
+ *   'find' in linux
+**/
+
+/*--- COMMON LIBRARIES ---*/
+
+#include <stdio.h>	  // input & output
+#include <string.h>	  // string manipulation
+#include <dirent.h>	  // For directory structure
+#include <errno.h>	  // For error-output
+#include <stdbool.h>  // For readability
+#include <stdlib.h>	  // For memory-allocation
+#include <sys/stat.h> // For file-information
+
+/*--- CUSTOM LIBRARIES ---*/
+
+/*--- MACROS ---*/
 
 /* Directory Entries => https://www.gnu.org/software/libc/manual/html_node/Directory-Entries.html
-unknown_type
-regular_file
-directory
-named_pipe (FIFO)
-socket
-char_device
-block_device
-symbolic_link
+unknown_type	> DT_UNKNOWN
+regular_file	> DT_REG 
+directory		> DT_DIR
+named_pipe		> DT_FIFO
+socket			> DT_SOCK 
+char_device		> DT_CHR 
+block_device	> DT_BLK 
+symbolic_link	> DT_LNK 
 */
 
 // enum options
@@ -203,5 +225,7 @@ params_t *check_params(int counter, char const **unsafe_params)
 
 int do_entry(const char *entry_name, const params_t *const params)
 {
+	struct stat entry_properties;
+	stat(entry_name, &entry_properties);
 	return EXIT_SUCCESS;
 }
