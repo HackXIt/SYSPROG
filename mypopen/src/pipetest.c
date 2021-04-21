@@ -4,7 +4,20 @@
 
 #include "../inc/mypopen.h"
 
-#define BUFFER 130
+/* MANPAGES to check out
+pipe()
+fork()
+
+dup2() -> stdin, stdout
+
+exec(), execl(), execv()
+
+sh()
+
+fdopen()
+
+waitpid()
+*/
 
 int main()
 {
