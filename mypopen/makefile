@@ -1,7 +1,7 @@
 CC=gcc
 INC=-iquote/home/rini-debian/git-stash/SYSPROG/mypopen/inc
-# CFLAGS=-std=c99 -Wall -Wextra -pedantic -g -Wno-unused-parameter
-CFLAGS=-g -Wno-unused-parameter
+CFLAGS=-Wall -Wextra -pedantic -g -Wno-unused-parameter
+# CFLAGS=-g -Wno-unused-parameter
 BUILD=./build/
 # VPATH:=src:build
 vpath %.o ./build
@@ -23,7 +23,10 @@ all: pipetest
 pipetest: pipetest.c $(BUILD)mypopen.o
 	$(CC) $(CFLAGS) $^ -o $(BUILD)$@
 
-example_pipe: example_pipe.c
+example: example_pipe.c
+	${CC} ${CFLAGS} $^ -o ${BUILD}$@
+
+example2: example_pipe2.c
 	${CC} ${CFLAGS} $^ -o ${BUILD}$@
 
 clean:
