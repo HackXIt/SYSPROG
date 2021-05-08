@@ -4,4 +4,5 @@
 // extern is implicit in functions, so not used below
 FILE *mypopen(const char *command, const char *type);
 int mypclose(FILE *stream);
+char **tokenize_parameters(const char *param_string);
 #endif

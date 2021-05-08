@@ -4,7 +4,7 @@
  * Created:
  *   4/15/2021, 9:13:25 PM
  * Last edited:
- *   5/6/2021, 8:22:26 PM
+ *   5/8/2021, 5:03:24 PM
  * Auto updated?
  *   Yes
  *
@@ -13,7 +13,7 @@
 **/
 
 /*--- COMMON LIBRARIES ---*/
-#include <stdio.h>	  // -> fdopen
+#include <stdio.h>	  // -> fdopen()
 #include <unistd.h>	  // -> pipe(), fork(), dup2(), exec(), read()/write()
 #include <stdlib.h>	  // -> system() -> sh
 #include <sys/wait.h> // -> waitpid() & stat_loc
@@ -24,7 +24,7 @@
 #include "../inc/mypopen.h"
 
 /*--- MACROS ---*/
-// #define _POSIX_C_SOURCE
+#define DEBUG
 
 /*--- Program-Notes ---*/
 
@@ -38,17 +38,6 @@
 		By using 'execlp()' I can rely on the PATH variable to provide me with the correct path for said program.
 		In security critical situations this shouldn't be done, because it can be abused to direct towards a malicious program.
 		*/
-/* NOTE Some code to seperate the command with ' ' in case I need it
-	// char **tokens;
-	// char *token = strtok(command, " ");
-	// tokens[0] = token;
-	// int i = 1;
-	// while(token != NULL) {
-	// 	tokens[i] = token;
-	// 	token = strtok(NULL, " ");
-	// 	i++;
-	// }
-	*/
 /* NOTE the below was used in a previous version of the code
 	// switch (mode)
 	// {
@@ -75,63 +64,112 @@ FILE *mypopen(const char *command, const char *type)
 	if (mypid != -1)
 	{
 		fprintf(stderr, "Only 1 open process is supported. Current process ID: %d\n", mypid);
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 	FILE *pipe_stream;
 	int pipefd[2];
 	char buf[BUFFER];
-	pipe(pipefd); // create a pipe
-				  // TODO assuming correctness of pipe atm / should be checked
-
-	printf("\n--- mypopen ---\ncommand: %s - mode: %s\n\n ---", command, type);
-	// TODO MUST be done inside child-process, because works differently with pipe
-	// dup2(STDIN_FILENO, pipefd[0]);	// duplicate stdin into pipe read
-	// dup2(STDOUT_FILENO, pipefd[1]); // duplicate stdout into pipe write
-	mypid = fork(); // TODO Assuming correctness of fork atm / should be checked
+	if (pipe(pipefd) == -1) // create a pipe
+	{
+		perror("pipe creation failed!\n");
+	}
+	char **arguments = tokenize_parameters(command);
+	if (arguments == NULL)
+	{
+		fprintf(stderr, "Command couldn't be tokenized!\n");
+		exit(EXIT_FAILURE);
+	}
+#ifdef DEBUG
+	printf("\n--- mypopen ---\n--- command: %s | mode: %s ---\n\n", command, type); // Seperator for readability
+#endif
+	/* NOTE MUST be done inside individual processes...
+	because is intended to duplicate the pipe INTO STDIN or STDOUT of the individual process
+			dup2(pipefd[0], STDIN_FILENO);	// duplicate stdin into pipe read
+			dup2(pipefd[1], STDOUT_FILENO); // duplicate stdout into pipe write
+	*/
+	mypid = fork();
 	// TODO Currently I've only implemented the behaviour of a child-process writing to stdout
+	if (mypid == -1)
+	{
+		perror("fork failed");
+		exit(EXIT_FAILURE);
+	}
 	if (mypid == 0)
 	{ // This is the child-process block.
-		close(pipefd[0]);
-		// in the child, the STDOUT is on the read end of the pipe
-		dup2(pipefd[1], STDOUT_FILENO);
-		close(pipefd[1]);
-		// The below is explained in detail @ exec(3)
-		// execl("/bin/sh", "sh", "-c", command, (char *)NULL);
-		// execl("/bin/ls", "-lh", (char *)NULL);
-		execlp("ls", "ls", "-l", "-h", (char *)NULL);
-		// execlp("ls -lh", (char *)NULL);
-		// execlp(command, command, (char *)NULL); // "ls -lh" = argv[0]
+		if (strcmp(type, "r") == 0)
+		{
 
-		// alternatively, this can be used to provide an argument-vector (argv) instead of an argument-list
-		// execv(command, (char *) NULL);
-		// write(pipefd[1], "\0", 1);
-		_exit(EXIT_SUCCESS);
+			close(pipefd[0]); // closing unused read-end
+			// in the child, the STDOUT is on the read end of the pipe
+			dup2(pipefd[1], STDOUT_FILENO);
+			close(pipefd[1]); // closing write-end because duplication exists in STDOUT_FILENO
+		}
+		else if (strcmp(type, "w") == 0)
+		{
+			close(pipefd[1]); // closing unused write-end
+			// in the child, the STDIN is on the write end of the pipe
+			dup2(pipefd[0], STDIN_FILENO);
+			close(pipefd[0]);
+		}
+		else
+		{
+			close(pipefd[0]);
+			close(pipefd[1]);
+			exit(EXIT_FAILURE);
+		}
+		// The below is explained in detail @ exec(3) => man exec
+		/* NOTE learning exec(3) from my failures...
+		execl("/bin/sh", "sh", "-c", command, (char *)NULL); // => SHOULDN'T BE used as it leaves a zombie shell and doesn't exit!
+		execl("/bin/ls", "-lh", (char *)NULL); // Doesn't work because it is missing argv[0] => "ls", the 1st param can't be in argv[0]
+		execlp("ls -lh", (char *)NULL); // Doesn't work because 1st parameter is only used for searching PATH
+		execv(command, (char *) NULL); // alternatively, this can be used to provide an argument-vector (argv) instead of an argument-list
+		execlp(command, command, (char *)NULL); // "ls -lh" = argv[0] | parameters must be tokenized to properly work
+		execlp("ls", "ls", "-l", "-h", (char *)NULL); // works but is static
+		*/
+		execvp(arguments[0], arguments);
+		exit(EXIT_SUCCESS);
 	}
 	else
 	{ // This is the parent-process block.
 		// Currently only reading output of child-process, because testing with 'ls'
-		close(pipefd[1]);
-		pipe_stream = fdopen(pipefd[0], "r");
+		if (strcmp(type, "r") == 0)
+		{
+			close(pipefd[1]); // Closing unused write-end
+			pipe_stream = fdopen(pipefd[0], type);
+#ifdef DEBUG
+			int ret = 0;
+			while ((ret = read(pipefd[0], &buf, 1)) > 0)
+			{
+				write(fileno(stdout), &buf, 1);
+			}
+#endif
+		}
+		else if (strcmp(type, "w") == 0)
+		{
+			close(pipefd[0]); // Closing unused read-end
+			pipe_stream = fdopen(pipefd[1], type);
+#ifdef DEBUG
+			int ret = 0;
+			while ((ret = write(pipefd[1], &buf, 1)) > 0)
+			{
+				read(fileno(stdin), &buf, 1);
+			}
+#endif
+		}
+		else
+		{
+			close(pipefd[0]);
+			close(pipefd[1]);
+			fprintf(stderr, "Invalid mode given! Must be either read or write!\n");
+			exit(EXIT_FAILURE);
+		}
 		if (pipe_stream == NULL)
 		{
-			perror("fdopen failed");
+			perror("fdopen failed!\n");
+			exit(EXIT_FAILURE);
 		}
-		// dup2(STDIN_FILENO, pipefd[0]);
-		// int ret = 0;
-		// while ((ret = read(pipefd[0], &buf, 1)) > 0) // FIXME program hangs here
-		// {
-		// 	write(STDOUT_FILENO, &buf, 1);
-		// }
-		// printf("\nasdf\n");
-		// if (ret == -1)
-		// {
-		// 	printf("%s", strerror(errno));
-		// }
-		// write(STDOUT_FILENO, "\n", 1);
-		// write(STDOUT_FILENO, "\0", 1);
-		// close(pipefd[0]);
 	}
-	// FILE *proc_stream = fdopen(pipefd[0], type); // "r"
+	free(arguments);
 	return pipe_stream;
 }
 
@@ -139,17 +177,60 @@ int mypclose(FILE *stream)
 {
 	if (mypid == -1)
 	{
-		fprintf(stderr, "No process was opened!");
+		fprintf(stderr, "No process was opened!\n");
 		return EXIT_FAILURE;
 	}
-
 	int child_exit_status = 0;
 	pid_t child = -1;
 	fclose(stream);
 	// free(stream);
 	// child = wait(&child_exit_status); // This waits for the next child process to exit
 	child = waitpid(mypid, &child_exit_status, 0);
-	printf("PID: %d - EXIT_CODE: %d", child, child_exit_status);
+	if (child != mypid)
+	{
+		fprintf(stderr, "Undefined behaviour!\n");
+	}
+	printf("PID: %d - EXIT_CODE: %d\n", child, child_exit_status);
 
 	return child_exit_status;
+}
+
+char **tokenize_parameters(const char *param_string)
+{
+	char *string = calloc(strlen(param_string), sizeof(char));
+	if (string == NULL)
+	{
+		fprintf(stderr, "Out of Memory!");
+		return NULL;
+	}
+	strcpy(string, param_string);
+	char **tokens = calloc(1, sizeof(char *));
+	if (tokens == NULL)
+	{
+		free(string);
+		fprintf(stderr, "Out of Memory!");
+		return NULL;
+	}
+	char *delims = " ";
+	char *token = strtok(string, delims);
+	tokens[0] = token;
+	unsigned int token_count = 1;
+	char **new_tokens;
+	while (token != NULL)
+	{
+		new_tokens = (char **)realloc(tokens, (token_count + 1) * sizeof(char *));
+		if (new_tokens == NULL)
+		{
+			perror("Out of memory!");
+			free(tokens);
+			exit(EXIT_FAILURE);
+		}
+		else
+		{
+			token = strtok(NULL, delims);
+			tokens[token_count] = token;
+			token_count++;
+		}
+	}
+	return tokens;
 }
