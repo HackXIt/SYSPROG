@@ -4,7 +4,7 @@
  * Created:
  *   4/15/2021, 9:13:25 PM
  * Last edited:
- *   5/8/2021, 5:03:24 PM
+ *   5/12/2021, 6:17:16 PM
  * Auto updated?
  *   Yes
  *
@@ -24,7 +24,7 @@
 #include "../inc/mypopen.h"
 
 /*--- MACROS ---*/
-#define DEBUG
+// #define DEBUG
 
 /*--- Program-Notes ---*/
 
@@ -68,7 +68,6 @@ FILE *mypopen(const char *command, const char *type)
 	}
 	FILE *pipe_stream;
 	int pipefd[2];
-	char buf[BUFFER];
 	if (pipe(pipefd) == -1) // create a pipe
 	{
 		perror("pipe creation failed!\n");
@@ -80,23 +79,23 @@ FILE *mypopen(const char *command, const char *type)
 		exit(EXIT_FAILURE);
 	}
 #ifdef DEBUG
+	char buf[BUFFER];																// Buffer for debug-output;
 	printf("\n--- mypopen ---\n--- command: %s | mode: %s ---\n\n", command, type); // Seperator for readability
 #endif
-	/* NOTE MUST be done inside individual processes...
+	/* NOTE dup2() MUST be done inside individual processes...
 	because is intended to duplicate the pipe INTO STDIN or STDOUT of the individual process
 			dup2(pipefd[0], STDIN_FILENO);	// duplicate stdin into pipe read
 			dup2(pipefd[1], STDOUT_FILENO); // duplicate stdout into pipe write
 	*/
 	mypid = fork();
-	// TODO Currently I've only implemented the behaviour of a child-process writing to stdout
 	if (mypid == -1)
 	{
 		perror("fork failed");
 		exit(EXIT_FAILURE);
 	}
 	if (mypid == 0)
-	{ // This is the child-process block.
-		if (strcmp(type, "r") == 0)
+	{								// This is the child-process block.
+		if (strcmp(type, "r") == 0) // read-block of child-process
 		{
 
 			close(pipefd[0]); // closing unused read-end
@@ -104,14 +103,14 @@ FILE *mypopen(const char *command, const char *type)
 			dup2(pipefd[1], STDOUT_FILENO);
 			close(pipefd[1]); // closing write-end because duplication exists in STDOUT_FILENO
 		}
-		else if (strcmp(type, "w") == 0)
+		else if (strcmp(type, "w") == 0) // write-block of child-process
 		{
 			close(pipefd[1]); // closing unused write-end
 			// in the child, the STDIN is on the write end of the pipe
 			dup2(pipefd[0], STDIN_FILENO);
 			close(pipefd[0]);
 		}
-		else
+		else // invalid type given
 		{
 			close(pipefd[0]);
 			close(pipefd[1]);
@@ -132,7 +131,7 @@ FILE *mypopen(const char *command, const char *type)
 	else
 	{ // This is the parent-process block.
 		// Currently only reading output of child-process, because testing with 'ls'
-		if (strcmp(type, "r") == 0)
+		if (strcmp(type, "r") == 0) // read-block of parent-process
 		{
 			close(pipefd[1]); // Closing unused write-end
 			pipe_stream = fdopen(pipefd[0], type);
@@ -144,7 +143,7 @@ FILE *mypopen(const char *command, const char *type)
 			}
 #endif
 		}
-		else if (strcmp(type, "w") == 0)
+		else if (strcmp(type, "w") == 0) // write-block of parent-process
 		{
 			close(pipefd[0]); // Closing unused read-end
 			pipe_stream = fdopen(pipefd[1], type);
@@ -183,45 +182,47 @@ int mypclose(FILE *stream)
 	int child_exit_status = 0;
 	pid_t child = -1;
 	fclose(stream);
-	// free(stream);
 	// child = wait(&child_exit_status); // This waits for the next child process to exit
 	child = waitpid(mypid, &child_exit_status, 0);
 	if (child != mypid)
 	{
 		fprintf(stderr, "Undefined behaviour!\n");
 	}
+#ifdef DEBUG
 	printf("PID: %d - EXIT_CODE: %d\n", child, child_exit_status);
-
+#endif
 	return child_exit_status;
 }
 
 char **tokenize_parameters(const char *param_string)
 {
-	char *string = calloc(strlen(param_string), sizeof(char));
+	char *string = calloc(strlen(param_string) + 1, sizeof(char)); // +1 because of Nullbyte at end of String
 	if (string == NULL)
 	{
-		fprintf(stderr, "Out of Memory!");
+		fprintf(stderr, "Out of Memory!\n");
 		return NULL;
 	}
+	// unsigned int size = strlen(param_string) + 1;
+	// char string[size];
 	strcpy(string, param_string);
 	char **tokens = calloc(1, sizeof(char *));
 	if (tokens == NULL)
 	{
 		free(string);
-		fprintf(stderr, "Out of Memory!");
+		fprintf(stderr, "Out of Memory!\n");
 		return NULL;
 	}
 	char *delims = " ";
 	char *token = strtok(string, delims);
 	tokens[0] = token;
 	unsigned int token_count = 1;
-	char **new_tokens;
 	while (token != NULL)
 	{
-		new_tokens = (char **)realloc(tokens, (token_count + 1) * sizeof(char *));
-		if (new_tokens == NULL)
+		tokens = (char **)realloc(tokens, (token_count + 1) * sizeof(char *));
+		if (tokens == NULL)
 		{
-			perror("Out of memory!");
+			perror("Out of memory!\n");
+			free(string);
 			free(tokens);
 			exit(EXIT_FAILURE);
 		}
@@ -232,5 +233,6 @@ char **tokenize_parameters(const char *param_string)
 			token_count++;
 		}
 	}
+	// free(string);
 	return tokens;
 }
