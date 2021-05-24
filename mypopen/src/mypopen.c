@@ -4,7 +4,7 @@
  * Created:
  *   4/15/2021, 9:13:25 PM
  * Last edited:
- *   5/25/2021, 12:36:16 AM
+ *   5/25/2021, 1:02:19 AM
  * Auto updated?
  *   Yes
  *
@@ -68,6 +68,7 @@ See here: https://stackoverflow.com/questions/48884454/why-does-popen-invoke-a-s
 
 // FIXME Using external variable... Not best-practice
 pid_t mypid = -1;
+int myfd = -1;
 
 FILE *mypopen(const char *command, const char *type)
 {
@@ -158,6 +159,7 @@ FILE *mypopen(const char *command, const char *type)
 		if (strcmp(type, "r") == 0) // read-block of parent-process
 		{
 			close(pipefd[1]); // Closing unused write-end
+			myfd = pipefd[0];
 			pipe_stream = fdopen(pipefd[0], type);
 #ifdef DEBUG_CHILD
 			int ret = 0;
@@ -170,6 +172,7 @@ FILE *mypopen(const char *command, const char *type)
 		else if (strcmp(type, "w") == 0) // write-block of parent-process
 		{
 			close(pipefd[0]); // Closing unused read-end
+			myfd = pipefd[1];
 			pipe_stream = fdopen(pipefd[1], type);
 #ifdef DEBUG_CHILD
 			int ret = 0;
@@ -200,21 +203,27 @@ FILE *mypopen(const char *command, const char *type)
 
 int mypclose(FILE *stream)
 {
-	struct stat st;
-	fstat(fileno(stream), &st);
-	if (!S_ISFIFO(st.st_mode))
+	if (mypid == -1)
 	{
-		errno = EAGAIN;
+		errno = ECHILD;
 		return -1;
 	}
 	if (stream == NULL)
 	{
 		errno = EINVAL;
+		if (myfd > 0)
+		{
+			close(myfd);
+		}
 		return -1;
 	}
-	if (mypid == -1)
+	if (myfd != fileno(stream))
 	{
-		fprintf(stderr, "No process was opened!\n");
+		errno = EINVAL;
+		if (myfd > 0)
+		{
+			close(myfd);
+		}
 		return -1;
 	}
 	int child_exit_status = 0;
@@ -230,6 +239,7 @@ int mypclose(FILE *stream)
 	printf("PID: %d - EXIT_CODE: %d\n", child, child_exit_status);
 #endif
 	mypid = -1;
+	myfd = -1;
 	return child_exit_status;
 }
 
