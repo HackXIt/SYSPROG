@@ -4,7 +4,7 @@
  * Created:
  *   4/15/2021, 9:13:25 PM
  * Last edited:
- *   5/12/2021, 6:17:16 PM
+ *   5/25/2021, 12:33:47 AM
  * Auto updated?
  *   Yes
  *
@@ -21,10 +21,19 @@
 #include <errno.h>
 
 /*--- CUSTOM LIBRARIES ---*/
-#include "../inc/mypopen.h"
+#include "mypopen.h"
 
 /*--- MACROS ---*/
-// #define DEBUG
+/* NOTE DEBUG_CHILD is only useful with: (gdb) set follow-fork-mode child
+It is used to debug the child process and still get the output of the process.
+*/
+// #define DEBUG_CHILD
+// #define VERBOSE
+/* NOTE This implements the solution using /bin/sh instead of directly calling the desired program
+Using the shell is generally the preferred method, because it provides additional features that would be hard to implement
+See here: https://stackoverflow.com/questions/48884454/why-does-popen-invoke-a-shell-to-execute-a-process
+*/
+#define ALTERNATIVE
 
 /*--- Program-Notes ---*/
 
@@ -55,12 +64,12 @@
 // Don't understand stat_loc and options yet completely
 // TODO create list of stat_loc & options with meaning and examples
 
-// FIXME Using external variable... Not best-practice
-extern pid_t mypid = -1;
+// FIXME Using external variable... Not best-practice ??
+// extern pid_t mypid = -1;
+pid_t mypid = -1;
 
 FILE *mypopen(const char *command, const char *type)
 {
-	// TODO Currently not doing error-detection
 	if (mypid != -1)
 	{
 		fprintf(stderr, "Only 1 open process is supported. Current process ID: %d\n", mypid);
@@ -72,13 +81,15 @@ FILE *mypopen(const char *command, const char *type)
 	{
 		perror("pipe creation failed!\n");
 	}
+#ifndef ALTERNATIVE
 	char **arguments = tokenize_parameters(command);
 	if (arguments == NULL)
 	{
 		fprintf(stderr, "Command couldn't be tokenized!\n");
 		exit(EXIT_FAILURE);
 	}
-#ifdef DEBUG
+#endif
+#ifdef DEBUG_CHILD
 	char buf[BUFFER];																// Buffer for debug-output;
 	printf("\n--- mypopen ---\n--- command: %s | mode: %s ---\n\n", command, type); // Seperator for readability
 #endif
@@ -116,8 +127,8 @@ FILE *mypopen(const char *command, const char *type)
 			close(pipefd[1]);
 			exit(EXIT_FAILURE);
 		}
-		// The below is explained in detail @ exec(3) => man exec
-		/* NOTE learning exec(3) from my failures...
+// The below is explained in detail @ exec(3) => man exec
+/* NOTE learning exec(3) from my failures...
 		execl("/bin/sh", "sh", "-c", command, (char *)NULL); // => SHOULDN'T BE used as it leaves a zombie shell and doesn't exit!
 		execl("/bin/ls", "-lh", (char *)NULL); // Doesn't work because it is missing argv[0] => "ls", the 1st param can't be in argv[0]
 		execlp("ls -lh", (char *)NULL); // Doesn't work because 1st parameter is only used for searching PATH
@@ -125,8 +136,14 @@ FILE *mypopen(const char *command, const char *type)
 		execlp(command, command, (char *)NULL); // "ls -lh" = argv[0] | parameters must be tokenized to properly work
 		execlp("ls", "ls", "-l", "-h", (char *)NULL); // works but is static
 		*/
+#ifndef ALTERNATIVE
 		execvp(arguments[0], arguments);
-		exit(EXIT_SUCCESS);
+#endif
+#ifdef ALTERNATIVE
+		execl("/bin/sh", "sh", "-c", command, NULL);
+#endif
+		sleep(5);
+		_exit(127); // Exits and closes all file-descriptors
 	}
 	else
 	{ // This is the parent-process block.
@@ -135,7 +152,7 @@ FILE *mypopen(const char *command, const char *type)
 		{
 			close(pipefd[1]); // Closing unused write-end
 			pipe_stream = fdopen(pipefd[0], type);
-#ifdef DEBUG
+#ifdef DEBUG_CHILD
 			int ret = 0;
 			while ((ret = read(pipefd[0], &buf, 1)) > 0)
 			{
@@ -147,7 +164,7 @@ FILE *mypopen(const char *command, const char *type)
 		{
 			close(pipefd[0]); // Closing unused read-end
 			pipe_stream = fdopen(pipefd[1], type);
-#ifdef DEBUG
+#ifdef DEBUG_CHILD
 			int ret = 0;
 			while ((ret = write(pipefd[1], &buf, 1)) > 0)
 			{
@@ -168,7 +185,9 @@ FILE *mypopen(const char *command, const char *type)
 			exit(EXIT_FAILURE);
 		}
 	}
+#ifndef ALTERNATIVE
 	free(arguments);
+#endif
 	return pipe_stream;
 }
 
@@ -188,12 +207,14 @@ int mypclose(FILE *stream)
 	{
 		fprintf(stderr, "Undefined behaviour!\n");
 	}
-#ifdef DEBUG
+#ifdef VERBOSE
 	printf("PID: %d - EXIT_CODE: %d\n", child, child_exit_status);
 #endif
+	mypid = -1;
 	return child_exit_status;
 }
 
+#ifndef ALTERNATIVE
 char **tokenize_parameters(const char *param_string)
 {
 	char *string = calloc(strlen(param_string) + 1, sizeof(char)); // +1 because of Nullbyte at end of String
@@ -236,3 +257,4 @@ char **tokenize_parameters(const char *param_string)
 	// free(string);
 	return tokens;
 }
+#endif
