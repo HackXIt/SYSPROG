@@ -32,4 +32,9 @@ example2: example_pipe2.c
 clean:
 	rm $(BUILD)*.o $(BUILD)pipetest
 
+instlib:
+	sudo cp ./inc/*.a /usr/local/lib
+
+.PHONY: clean instlib
+
 # TODO Doxygen Target
