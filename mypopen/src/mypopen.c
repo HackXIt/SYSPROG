@@ -4,7 +4,7 @@
  * Created:
  *   4/15/2021, 9:13:25 PM
  * Last edited:
- *   5/25/2021, 12:33:47 AM
+ *   5/25/2021, 12:36:16 AM
  * Auto updated?
  *   Yes
  *
@@ -13,11 +13,13 @@
 **/
 
 /*--- COMMON LIBRARIES ---*/
-#include <stdio.h>	  // -> fdopen()
-#include <unistd.h>	  // -> pipe(), fork(), dup2(), exec(), read()/write()
-#include <stdlib.h>	  // -> system() -> sh
-#include <sys/wait.h> // -> waitpid() & stat_loc
-#include <string.h>	  // -> strsep()
+#include <stdio.h>	   // -> fdopen()
+#include <unistd.h>	   // -> pipe(), fork(), dup2(), exec(), read()/write()
+#include <stdlib.h>	   // -> system() -> sh
+#include <sys/wait.h>  // -> waitpid() & stat_loc
+#include <sys/stat.h>  // -> fstat()
+#include <sys/types.h> // -> st_mode
+#include <string.h>	   // -> strsep()
 #include <errno.h>
 
 /*--- CUSTOM LIBRARIES ---*/
@@ -64,16 +66,20 @@ See here: https://stackoverflow.com/questions/48884454/why-does-popen-invoke-a-s
 // Don't understand stat_loc and options yet completely
 // TODO create list of stat_loc & options with meaning and examples
 
-// FIXME Using external variable... Not best-practice ??
-// extern pid_t mypid = -1;
+// FIXME Using external variable... Not best-practice
 pid_t mypid = -1;
 
 FILE *mypopen(const char *command, const char *type)
 {
 	if (mypid != -1)
 	{
-		fprintf(stderr, "Only 1 open process is supported. Current process ID: %d\n", mypid);
-		exit(EXIT_FAILURE);
+		errno = EAGAIN;
+		return NULL;
+	}
+	if ((command == NULL) || (type == NULL))
+	{
+		errno = EINVAL;
+		return NULL;
 	}
 	FILE *pipe_stream;
 	int pipefd[2];
@@ -125,7 +131,8 @@ FILE *mypopen(const char *command, const char *type)
 		{
 			close(pipefd[0]);
 			close(pipefd[1]);
-			exit(EXIT_FAILURE);
+			errno = EINVAL;
+			return NULL;
 		}
 // The below is explained in detail @ exec(3) => man exec
 /* NOTE learning exec(3) from my failures...
@@ -176,8 +183,8 @@ FILE *mypopen(const char *command, const char *type)
 		{
 			close(pipefd[0]);
 			close(pipefd[1]);
-			fprintf(stderr, "Invalid mode given! Must be either read or write!\n");
-			exit(EXIT_FAILURE);
+			errno = EINVAL;
+			return NULL;
 		}
 		if (pipe_stream == NULL)
 		{
@@ -193,10 +200,22 @@ FILE *mypopen(const char *command, const char *type)
 
 int mypclose(FILE *stream)
 {
+	struct stat st;
+	fstat(fileno(stream), &st);
+	if (!S_ISFIFO(st.st_mode))
+	{
+		errno = EAGAIN;
+		return -1;
+	}
+	if (stream == NULL)
+	{
+		errno = EINVAL;
+		return -1;
+	}
 	if (mypid == -1)
 	{
 		fprintf(stderr, "No process was opened!\n");
-		return EXIT_FAILURE;
+		return -1;
 	}
 	int child_exit_status = 0;
 	pid_t child = -1;

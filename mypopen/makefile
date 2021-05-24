@@ -1,6 +1,7 @@
 CC=gcc
 INC=-iquote/home/rini-debian/git-stash/SYSPROG/mypopen/inc
 CFLAGS=-Wall -Wextra -pedantic -g -Wno-unused-parameter
+POPENTEST=-lpopentest -ldl
 # CFLAGS=-g -Wno-unused-parameter
 BUILD=./build/
 # VPATH:=src:build
@@ -31,6 +32,10 @@ example2: example_pipe2.c
 
 clean:
 	rm $(BUILD)*.o $(BUILD)pipetest
+
+popentest: $(BUILD)mypopen.o
+	$(CC) $(CFLAGS) $^ -o $(BUILD)$@ $(POPENTEST)
+
 
 instlib:
 	sudo cp ./inc/*.a /usr/local/lib
