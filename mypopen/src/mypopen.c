@@ -4,7 +4,7 @@
  * Created:
  *   4/15/2021, 9:13:25 PM
  * Last edited:
- *   5/25/2021, 1:02:19 AM
+ *   5/25/2021, 2:35:43 AM
  * Auto updated?
  *   Yes
  *
@@ -86,7 +86,8 @@ FILE *mypopen(const char *command, const char *type)
 	int pipefd[2];
 	if (pipe(pipefd) == -1) // create a pipe
 	{
-		perror("pipe creation failed!\n");
+		errno = EMFILE;
+		return NULL;
 	}
 #ifndef ALTERNATIVE
 	char **arguments = tokenize_parameters(command);
@@ -106,10 +107,12 @@ FILE *mypopen(const char *command, const char *type)
 			dup2(pipefd[1], STDOUT_FILENO); // duplicate stdout into pipe write
 	*/
 	mypid = fork();
-	if (mypid == -1)
+	if (mypid == -1) // Failed to fork
 	{
-		perror("fork failed");
-		exit(EXIT_FAILURE);
+		errno = EAGAIN;
+		close(pipefd[0]);
+		close(pipefd[1]);
+		return NULL;
 	}
 	if (mypid == 0)
 	{								// This is the child-process block.
@@ -132,8 +135,7 @@ FILE *mypopen(const char *command, const char *type)
 		{
 			close(pipefd[0]);
 			close(pipefd[1]);
-			errno = EINVAL;
-			return NULL;
+			_exit(EINVAL);
 		}
 // The below is explained in detail @ exec(3) => man exec
 /* NOTE learning exec(3) from my failures...
@@ -150,7 +152,9 @@ FILE *mypopen(const char *command, const char *type)
 #ifdef ALTERNATIVE
 		execl("/bin/sh", "sh", "-c", command, NULL);
 #endif
+#ifdef DEBUG_CHILD
 		sleep(5);
+#endif
 		_exit(127); // Exits and closes all file-descriptors
 	}
 	else
@@ -191,8 +195,18 @@ FILE *mypopen(const char *command, const char *type)
 		}
 		if (pipe_stream == NULL)
 		{
-			perror("fdopen failed!\n");
-			exit(EXIT_FAILURE);
+			errno = EMFILE;
+			// Only 1 check necessary to determine the pipe-end to close
+			// program would have failed earlier if type would be incorrect
+			if (strcmp(type, "w") == 0)
+			{
+				close(pipefd[1]);
+			}
+			else
+			{
+				close(pipefd[0]);
+			}
+			return NULL;
 		}
 	}
 #ifndef ALTERNATIVE
@@ -203,12 +217,12 @@ FILE *mypopen(const char *command, const char *type)
 
 int mypclose(FILE *stream)
 {
-	if (mypid == -1)
+	if (mypid == -1) // No child process was opened!
 	{
 		errno = ECHILD;
 		return -1;
 	}
-	if (stream == NULL)
+	if (stream == NULL) // The given file-stream is NULL and thus invalid
 	{
 		errno = EINVAL;
 		if (myfd > 0)
@@ -217,7 +231,7 @@ int mypclose(FILE *stream)
 		}
 		return -1;
 	}
-	if (myfd != fileno(stream))
+	if (myfd != fileno(stream)) // The given file-stream was not created with mypopen()
 	{
 		errno = EINVAL;
 		if (myfd > 0)
@@ -228,18 +242,35 @@ int mypclose(FILE *stream)
 	}
 	int child_exit_status = 0;
 	pid_t child = -1;
-	fclose(stream);
+	if (fclose(stream) == EOF)
+	{
+		errno = ECHILD;
+		return -1;
+	}
+	else
+	{
+		myfd = -1;
+	}
 	// child = wait(&child_exit_status); // This waits for the next child process to exit
 	child = waitpid(mypid, &child_exit_status, 0);
+	if (!WIFEXITED(child_exit_status))
+	{
+		errno = ECHILD;
+		if (myfd > 0)
+		{
+			close(myfd);
+		}
+		return -1;
+	}
 	if (child != mypid)
 	{
-		fprintf(stderr, "Undefined behaviour!\n");
+		errno = ECHILD;
+		return -1;
 	}
 #ifdef VERBOSE
 	printf("PID: %d - EXIT_CODE: %d\n", child, child_exit_status);
 #endif
 	mypid = -1;
-	myfd = -1;
 	return child_exit_status;
 }
 
