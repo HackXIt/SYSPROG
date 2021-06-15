@@ -3,3 +3,4 @@ myfind/test-find
 myfind/build
 myfind.zip
 mypopen/build
+shared-memory-ringbuffer/build

@@ -1,0 +1,22 @@
+Dies ist ein Test
+Mal sehen, wieviel Text da zum Empfaenger ruebergeht.
+ÿ
+Warum kommt denn das alles nicht mehr an?
+Ob das evtl. mit dem Returntype von fgetc() zu tun hat? - Hmmm,
+da sollte man mal die Manpage befragen und ein bissi gruebeln.
+
+Wenn ein char alle moeglichen Werte eines Zeichens fassen koennen soll,
+wie hat fgetc() dann die Moeglichkeit im Returnwert einen Fehler oder
+end-of-file zu signalisieren?
+Evtl. braucht's dann genau einen Wert mehr als alle moeglichen Werte eines
+chars.
+Koennte das der Grund sein, warum fgetc() als Returntype int hat?
+Welchen Typ hat eigentlich EOF?
+Welchen Wert hat eigentlich EOF?
+Welchen Wert bekommt man, wenn man EOF auf char castet?
+Welchen Wert hat eigentlich das komische Zeichen auf Zeile 2 (wenn wir mit 0
+zu zaehlen beginnen) in diesem File?
+
+Und, ist der Groschen (oder der Cent) gefallen? - War's ein typisch
+oesterreichisches "Aha-Erlebnis"?
+

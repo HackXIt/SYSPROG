@@ -1,0 +1,117 @@
+Some resources
+How to Set up Shared Memory in Your Linux and MacOS Programs. (shmget, shmat, shmdt, shmctl, ftok)
+https://www.youtube.com/watch?app=desktop&v=WgVSq-sgHOc
+What is a semaphore? How do they work? (Example in C)
+https://www.youtube.com/watch?app=desktop&v=ukM_zzrIeXs
+IPC - Interprozesskommunikation
+https://openbook.rheinwerk-verlag.de/linux_unix_programmierung/Kap09-000.htm#RxxKap09000040002B71F02D10B
+IPC: Semaphore & Shared Memory
+https://moodle.technikum-wien.at/pluginfile.php/929900/mod_resource/content/1/operating_systems_linux_ipc_sem_shm.pdf
+
+---------- Shared Memory ----------
+A shared memory (in linux) is a file on the system. ("Everything in linux is a file")
+Assuming the file is called "myfile.txt"
+The contents of that file don't represent the contentes of the shared memory.
+The difference in comparison to using files, 
+is the fact that it resides in memory (faster),
+and it also doesn't perform read/write operations on the disk. (faster)
+
+	#include <sys/ipc.h>
+	#include <sys/shm.h>
+		shmget() -> allocates a System V shared memory segment
+			-> https://man7.org/linux/man-pages/man2/shmget.2.html
+			
+System V shared Memory
+	shmat, shmdt -> System V shared memory operations
+		-> https://man7.org/linux/man-pages/man2/shmat.2.html
+		shmat() -> attaches the System V shared memory segment
+			- requires Shared Memory ID, Address, Flag
+		shmdt() -> detaches the shared memory segment 
+			- requires Shared Memory Address
+		shmctl() -> System V shared memory control
+			- required Shared Memory ID
+			- performs control operation
+			- *buf is a pointer to the shmid_ds structure
+		ftok() -> convert a pathname and a project identifier to a System V IPC key
+			- requires pathname and Identifier
+			- returns key_t
+			- uses the given file to generate the key_t
+	
+POSIX shared memory:
+	POSIX shmat() -> XSI shared memory attach operation
+		-> https://man7.org/linux/man-pages/man3/shmat.3p.html
+	POSIX shmdt() -> XSI shared memory detach operation
+		-> https://man7.org/linux/man-pages/man3/shmdt.3p.html
+	
+mman.h -> Interface
+
+---------- Semaphores ----------
+	#include <sys/ipc.h>
+	#include <sys/sem.h>
+Semaphores are like binary unsigned integers (with some querks)
+	- Changes to semaphores are ATOMIC 
+	(Operations on Semaphore CANNOT interrupt each other)
+
+Wait decrements the integer if it's greater than 0 / otherwise waits
+post increments the integer if it's smaller than 1 / otherwise waits ??
+
+	wait()
+	// critical section
+	post()
+
+System V semaphores
+
+semget() -> get a System V semaphore set identifier
+	-> https://man7.org/linux/man-pages/man2/semget.2.html
+	- either gets a prev. created semaphore (semflg zero & key != IPC_PRIVATE)
+	- or it creates a new set (Semaphore)
+semctl() -> System V semaphore control operations
+	-> https://man7.org/linux/man-pages/man2/semctl.2.html
+semop() -> performs operations on selected semaphores in the set (indicated by semid)
+	-> https://man7.org/linux/man-pages/man2/semop.2.html
+	- requires sops, which is an array containing structures, which specify operations
+	
+POSIX semaphores
+#include <semaphore.h>
+libpthread.a librt.a -> Link-Time Library für Implementierung
+
+#include <fcntl.h>
+#include <sys/stat.h>
+sem_open() -> creates a new semaphore and initializes
+	- requires name, flags, file-mode and an initial value
+	- returns sem_t* (semaphore pointer) or SEM_FAILED
+sem_wait() -> waits until the given semaphore is free (basically decrements semaphore)
+	- returns 0 or -1 (SUCCESS or FAILURE)
+	- used to wait before going into critical section
+sem_post() -> posts to the semaphore, which makes it usable (basically increments semaphore)
+	- returns 0 or -1 (SUCCESS or FAILURE)
+	- used to free the semaphore ??? Dunno what that means yet...
+sem_close() -> closes the given semaphore ( ??? )
+	- returns 0 or -1 (SUCCESS or FAILURE)
+	- used for ???
+sem_unlink() -> removes the semaphore (basically deletes it)
+	- returns 0 or -1 (SUCCESS or FAILURE)
+	- requires name of semaphore
+	- It's critical that only one process removes the semaphore
+	
+
+---------- Examples / Pseudo-Code ----------
+
+There are 2 source-files, which correspond to sender & receiver.
+
+sender -> writes data
+receiver -> reads data
+
+One of the two creates the semaphore, the other gets the semaphore
+The same process should also create the shared memory, the other should only allocate it
+
+Both processes need the semaphore & shared memory to communicate with each other.
+
+The semaphores are used to signal each other, when to READ or WRITE.
+The shared memory is the memory which is written to or read from.
+
+Assuming receiver creates everything, it might work like so:
+	"file XYZ" -> ftok -> creates key
+	key -> shmget -> creates memory block
+	block -> shmat -> pointer to the memory?
+
