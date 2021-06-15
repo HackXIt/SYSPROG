@@ -4,3 +4,4 @@ myfind/build
 myfind.zip
 mypopen/build
 shared-memory-ringbuffer/build
+shared-memory-ringbuffer/client-server-example/out

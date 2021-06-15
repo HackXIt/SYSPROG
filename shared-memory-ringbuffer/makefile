@@ -49,7 +49,7 @@ example1: example_shm.c
 
 # Example source showcasing usage for semaphores - based on Manpages
 example2: example_semaphore.c
-	${CC} ${CFLAGS} $^ -o ${BUILD}$@
+	${CC} ${CFLAGS} ${LIBS} $^ -o ${BUILD}$@
 
 clean:
 	rm $(BUILD)*.o $(BUILD)shmrb $(BUILD)sender $(BUILD)receiver $(BUILD)example1 $(BUILD)example2
@@ -60,4 +60,4 @@ clean:
 instlib:
 	sudo cp ./inc/*.a /usr/local/lib
 
-.PHONY: clean instlib
+.PHONY: clean instlib client-server-example
