@@ -23,21 +23,31 @@ ${BUILD}%.o: %.c
 
 # Here are my targets
 
-all: pipetest
+all: sender receiver
+
+# This source/executable is for learning purposes of Interprocess-Communication
+# It follows the instructions of the Tutorials I watched
+tutorial: tutorial.c tutorial.h
+	$(CC) $(CFLAGS) $< -o $(BUILD)$@
 
 # SHared Memory RingBuffer => SHMRB
+# Custom library for project, if there's any functions that are used in sender & receiver
 shmrb: ipc.c ipc.h
 	$(CC) $(CFLAGS) $< -o $(BUILD)$@
 
+# Required project target
 sender: sender.c ipc.o
 	$(CC) $(CFLAGS) $^ -o $(BUILD)$@
 
+# Required project target
 receiver: receiver.c ipc.o
 	$(CC) $(CFLAGS) $^ -o $(BUILD)$@
 
+# Example source showcasing usage for shared memory - based on Manpages
 example1: example_shm.c
 	${CC} ${CFLAGS} $^ -o ${BUILD}$@
 
+# Example source showcasing usage for semaphores - based on Manpages
 example2: example_semaphore.c
 	${CC} ${CFLAGS} $^ -o ${BUILD}$@
 
@@ -46,7 +56,6 @@ clean:
 
 # TODO make target for test-file
 # test:
-
 
 instlib:
 	sudo cp ./inc/*.a /usr/local/lib
