@@ -19,7 +19,14 @@ void *thread(void *arg)
 	//signal
 	printf("\nJust Exiting...\n");
 	sem_post(&mutex);
+	return NULL;
 }
+
+/* NOTE Explanation to example
+2 threads are being created, one 2 seconds after the first one.
+But the first thread will sleep for 4 seconds after acquiring the lock.
+Thus the second thread will not enter immediately after it is called, it will enter 4 – 2 = 2 secs after it is called.
+*/
 
 int main()
 {
