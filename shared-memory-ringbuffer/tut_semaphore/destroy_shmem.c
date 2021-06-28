@@ -1,6 +1,7 @@
-// Source: https://www.youtube.com/watch?v=WgVSq-sgHOc
+// Source: https://www.youtube.com/watch?v=ukM_zzrIeXs
 
 #include <string.h>
+#include <stdio.h>
 
 #include "shared_memory.h"
 
