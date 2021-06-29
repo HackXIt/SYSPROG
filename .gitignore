@@ -5,3 +5,6 @@ myfind.zip
 mypopen/build
 shared-memory-ringbuffer/build
 shared-memory-ringbuffer/client-server-example/out
+shared-memory-ringbuffer/tut_client-server-example
+shared-memory-ringbuffer/tut_semaphore
+shared-memory-ringbuffer/tut_shared_memory

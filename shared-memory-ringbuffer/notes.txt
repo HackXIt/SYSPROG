@@ -93,6 +93,21 @@ post increments the integer if it's smaller than 1 / otherwise waits ??
 		- requires name of semaphore
 		- It's critical that only one process removes the semaphore
 
+---------- POSIX IPC vs. System V IPC ----------
+https://www.tutorialspoint.com/inter_process_communication/inter_process_communication_system_v_posix.htm
+https://stackoverflow.com/questions/4582968/system-v-ipc-vs-posix-ipc
+
+tl;dr:
+POSIX is the "newer" Library and is also the better interface to use, as it tried to mitigate weaknesses of it's predecessor.
+(that last part is debatable, but true for me)
+However, System V is far more compatible, since it's been in use for longer.
+
+The first links shows differences in the two IPC libraries.
+The second link explains the differences properly.
+
+Here are some supported/unsupported plattforms for POSIX IPC:
+http://semanchuk.com/philip/posix_ipc/#platforms
+
 ---------- Examples / Pseudo-Code ----------
 
 There are 2 source-files, which correspond to sender & receiver.

@@ -2,7 +2,7 @@ PROJECT=shared_memory_ringbuffer
 CC=gcc
 IQUOTE=-iquote/home/rini-debian/git-stash/SYSPROG/shared-memory-ringbufer/inc
 INC=-Iinc
-CFLAGS=${INC} -Wall -Wextra -pedantic -g -Wno-unused-parameter
+CFLAGS=${INC} -Wall -Wextra -pedantic -g -Wno-unused-parameter ${LIBS}
 LIBS=-lpthread -lrt
 # CFLAGS=-g -Wno-unused-parameter
 BUILD=./build/
@@ -49,7 +49,7 @@ example1: example_shm.c
 
 # Example source showcasing usage for semaphores - based on Manpages
 example2: example_semaphore.c
-	${CC} ${CFLAGS} ${LIBS} $^ -o ${BUILD}$@
+	${CC} ${CFLAGS} $^ -o ${BUILD}$@
 
 clean:
 	rm $(BUILD)*.o $(BUILD)shmrb $(BUILD)sender $(BUILD)receiver $(BUILD)example1 $(BUILD)example2
